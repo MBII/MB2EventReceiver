@@ -75,7 +75,7 @@ namespace MB2EventReceiver
     {
         public MBIINotificationHeader Header;
         public byte MBMode;
-        public int ruleset;
+        public int Ruleset;
         public bool respawnMode;
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
         public string Map;
@@ -103,7 +103,7 @@ namespace MB2EventReceiver
     {
         public MBIINotificationHeader Header;
         public byte ClientId;
-        public byte adminNum;
+        public byte AdminNum;
         public bool LoginSuccess;
         public uint IPAddress;
     }
@@ -145,7 +145,7 @@ namespace MB2EventReceiver
     public struct MBIINotification_Ban
     {
         public MBIINotificationHeader Header;
-        public byte clientId;
+        public byte ClientId;
         public uint IPAddress;
     }
 
@@ -170,6 +170,6 @@ namespace MB2EventReceiver
     public struct MBIINotification_ObjectiveComplete
     {
         public MBIINotificationHeader Header;
-        public byte clientId;
+        public byte ClientId;
     }
 }

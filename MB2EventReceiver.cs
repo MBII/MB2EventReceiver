@@ -33,50 +33,52 @@ namespace MB2EventReceiver
             MBII_RENS_OBJCOMPLETE
         };
 
-        public delegate void onClientConnectHandler(object sender, MBIINotificationEvent e);
-        public delegate void onClientDisconnectHandler(object sender, MBIINotificationEvent e);
-        public delegate void onClientBeginHandler(object sender, MBIINotificationEvent e);
-        public delegate void onTeamChangeHandler(object sender, MBIINotificationEvent e);
-        public delegate void onSpeachHandler(object sender, MBIINotificationEvent e);
-        public delegate void onKillsHandler(object sender, MBIINotificationEvent e);
-        public delegate void onServerStartHandler(object sender, MBIINotificationEvent e);
-        public delegate void onServerShutdownHandler(object sender, MBIINotificationEvent e);
-        public delegate void onPrivateDuelEventHandler(object sender, MBIINotificationEvent e);
-        public delegate void onSMODCommandHandler(object sender, MBIINotificationEvent e);
-        public delegate void onSMODLoginHandler(object sender, MBIINotificationEvent e);
-        public delegate void onMapchangeHandler(object sender, MBIINotificationEvent e);
-        public delegate void onModechangeHandler(object sender, MBIINotificationEvent e);
-        public delegate void onNameChangeHandler(object sender, MBIINotificationEvent e);
-        public delegate void onBanHandler(object sender, MBIINotificationEvent e);
-        public delegate void onIntermissionHandler(object sender, MBIINotificationEvent e);
-        public delegate void onObjCompleteHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnClientConnectHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnClientDisconnectHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnClientBeginHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnTeamChangeHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnSpeechHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnKillsHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnServerStartHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnServerShutdownHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnPrivateDuelEventHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnSMODCommandHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnSMODLoginHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnMapchangeHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnModechangeHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnNameChangeHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnBanHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnIntermissionHandler(object sender, MBIINotificationEvent e);
+        public delegate void OnObjCompleteHandler(object sender, MBIINotificationEvent e);
 
-        public event onClientConnectHandler? onClientConnect;
-        public event onClientDisconnectHandler? onClientDisconnect;
-        public event onClientBeginHandler? onClientBegin;
-        public event onTeamChangeHandler? onTeamChange;
-        public event onSpeachHandler? onSpeach;
-        public event onKillsHandler? onKills;
-        public event onServerStartHandler? onServerStart;
-        public event onServerShutdownHandler? onServerShutdown;
-        public event onPrivateDuelEventHandler? onPrivateDuelEvent;
-        public event onSMODCommandHandler? onSMODCommand;
-        public event onSMODLoginHandler? onSMODLogin;
-        public event onMapchangeHandler? onMapchange;
-        public event onModechangeHandler? onModechange;
-        public event onNameChangeHandler? onNameChange;
-        public event onBanHandler? onBan;
-        public event onIntermissionHandler? onIntermission;
-        public event onObjCompleteHandler? onObjComplete;
+        public event OnClientConnectHandler? OnClientConnect;
+        public event OnClientDisconnectHandler? OnClientDisconnect;
+        public event OnClientBeginHandler? OnClientBegin;
+        public event OnTeamChangeHandler? OnTeamChange;
+        public event OnSpeechHandler? OnSpeech;
+        public event OnKillsHandler? OnKills;
+        public event OnServerStartHandler? OnServerStart;
+        public event OnServerShutdownHandler? OnServerShutdown;
+        public event OnPrivateDuelEventHandler? OnPrivateDuelEvent;
+        public event OnSMODCommandHandler? OnSMODCommand;
+        public event OnSMODLoginHandler? OnSMODLogin;
+        public event OnMapchangeHandler? OnMapchange;
+        public event OnModechangeHandler? OnModechange;
+        public event OnNameChangeHandler? OnNameChange;
+        public event OnBanHandler? OnBan;
+        public event OnIntermissionHandler? OnIntermission;
+        public event OnObjCompleteHandler? OnObjComplete;
 
 
         //private UdpClient client = null!;
-        private Socket udpSocket = null!;
-        private List<IPAddress> sourceWhitelist = new List<IPAddress>();
+        private Socket _udpSocket = null!;
+        private List<IPAddress> _sourceWhitelist = new List<IPAddress>();
 
-        CancellationTokenSource TokenSource = new CancellationTokenSource();
-        private CancellationToken Token;
-        private Task? listenTask;
+        private CancellationTokenSource _tokenSource = new CancellationTokenSource();
+        private CancellationToken _token;
+        private Task? _listenTask;
+        private Channel<byte[]> _udpProcessingChannel = Channel.CreateUnbounded<byte[]>();
+
         public MB2EventListener(int port)
             : this(port, null)
         {
@@ -85,46 +87,46 @@ namespace MB2EventReceiver
 
         public MB2EventListener(int port, IEnumerable<string>? SourceWhitelist)
         {
-            onServerStart = null;
+            OnServerStart = null;
 
-            if (SourceWhitelist != null)
+            if (SourceWhitelist is not null)
             {
                 foreach (string s in SourceWhitelist)
                 {
                     IPAddress newAddr = IPAddress.Parse(s);
-                    sourceWhitelist.Add(newAddr);
+                    _sourceWhitelist.Add(newAddr);
                 }
             }
 
             IPEndPoint localEndPoint = new IPEndPoint(IPAddress.IPv6Any, port);
-            Token = TokenSource.Token;
+            _token = _tokenSource.Token;
 
-            udpSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
-            udpSocket.DualMode = true;
-            udpSocket.Bind(localEndPoint);
+            _udpSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
+            _udpSocket.DualMode = true;
+            _udpSocket.Bind(localEndPoint);
         }
 
         public async Task StartListen()
         {
             Console.WriteLine("StartListen");
-            if (listenTask != null)
+            if (_listenTask is not null)
             {
                 Console.WriteLine("Already Listening");
                 //Already listening
                 return;
             }
-            listenTask = ListenAsync(Token);
+            _listenTask = ListenAsync(_token);
 
             await Task.Run(async () =>
             {
                 try
                 {
-                    while (await udpProcessingChannel.Reader.WaitToReadAsync() && !Token.IsCancellationRequested)
+                    while (await _udpProcessingChannel.Reader.WaitToReadAsync() && !_token.IsCancellationRequested)
                     {
                         Console.WriteLine("Channel is waking up!");
                         try
                         {
-                            byte[] packet = await udpProcessingChannel.Reader.ReadAsync();
+                            byte[] packet = await _udpProcessingChannel.Reader.ReadAsync();
                             InterpretData(packet);
                         }
                         catch(Exception ex)
@@ -144,9 +146,9 @@ namespace MB2EventReceiver
 
         private bool AcceptFromIPAddress(IPAddress srcAddr)
         {
-            if(sourceWhitelist.Count > 0)
+            if(_sourceWhitelist.Count > 0)
             {
-                foreach(IPAddress whitelistedAddr in sourceWhitelist)
+                foreach(IPAddress whitelistedAddr in _sourceWhitelist)
                 {
                     if(srcAddr.Equals(whitelistedAddr))
                     {
@@ -161,8 +163,7 @@ namespace MB2EventReceiver
 
             return false;
         }
-
-        private Channel<byte[]> udpProcessingChannel = Channel.CreateUnbounded<byte[]>();
+        
         private async Task ListenAsync(CancellationToken token)
         {
             Console.WriteLine("Listen Thread running!");
@@ -173,7 +174,7 @@ namespace MB2EventReceiver
                     IPEndPoint RemoteEndPoint = new IPEndPoint(IPAddress.IPv6Any, 0);
                     byte[] data = new byte[512];
 
-                    SocketReceiveMessageFromResult result = await udpSocket.ReceiveMessageFromAsync(new ArraySegment<byte>(data), SocketFlags.None, RemoteEndPoint, token);
+                    SocketReceiveMessageFromResult result = await _udpSocket.ReceiveMessageFromAsync(new ArraySegment<byte>(data), SocketFlags.None, RemoteEndPoint, token);
                     IPEndPoint ep = (IPEndPoint)result.RemoteEndPoint;
 
                     string recvAddr;
@@ -202,7 +203,7 @@ namespace MB2EventReceiver
                     Console.WriteLine($"Got {data.Length} bytes from {recvAddr}. Writing to UDP Processing Channel");
 
                     byte[] packet = data.AsSpan(0, result.ReceivedBytes).ToArray();
-                    udpProcessingChannel.Writer.TryWrite(packet);
+                    _udpProcessingChannel.Writer.TryWrite(packet);
                 }
                 catch(Exception ex)
                 {
@@ -249,144 +250,144 @@ namespace MB2EventReceiver
                 {
                     case MBIINotificationType.MBII_RENS_CLIENTCONNECT:
                         {
-                            if(onClientConnect != null)
+                            if(OnClientConnect is not null)
                             {
-                                onClientConnect(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ClientConnect>(ptr) });
+                                OnClientConnect(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ClientConnect>(ptr) });
                             }
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_CLIENTDISCONNECT:
                         {
-                            if (onClientDisconnect != null)
+                            if (OnClientDisconnect is not null)
                             {
-                                onClientDisconnect(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ClientDisconnect>(ptr) });
+                                OnClientDisconnect(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ClientDisconnect>(ptr) });
                             }
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_CLIENTBEGIN:
                         {
-                            if (onClientBegin != null)
+                            if (OnClientBegin is not null)
                             {
-                                onClientBegin(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ClientBegin>(ptr) });
+                                OnClientBegin(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ClientBegin>(ptr) });
                             }
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_TEAMCHANGE:
                         {
-                            if (onTeamChange != null)
+                            if (OnTeamChange is not null)
                             {
-                                onTeamChange(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_SwitchTeams>(ptr) });
+                                OnTeamChange(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_SwitchTeams>(ptr) });
                             }
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_SPEECH:
                         {
-                            if (onSpeach != null)
+                            if (OnSpeech is not null)
                             {
-                                onSpeach(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_Speech>(ptr) });
+                                OnSpeech(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_Speech>(ptr) });
                             }
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_KILL:
                         {
-                            if (onKills != null)
+                            if (OnKills is not null)
                             {
-                                onKills(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_PlayerDeath>(ptr) });
+                                OnKills(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_PlayerDeath>(ptr) });
                             }
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_SERVERSTART:
                         {
-                            if (onServerStart != null)
+                            if (OnServerStart is not null)
                             {
-                                onServerStart(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ServerStart>(ptr) });
+                                OnServerStart(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ServerStart>(ptr) });
                             }
                             
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_SERVERSHUTDOWN:
                         {
-                            if (onServerShutdown != null)
+                            if (OnServerShutdown is not null)
                             {
-                                onServerShutdown(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ServerShutdown>(ptr) });
+                                OnServerShutdown(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ServerShutdown>(ptr) });
                             }
 
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_PRIVATEDUELEVENT:
                         {
-                            if (onPrivateDuelEvent != null)
+                            if (OnPrivateDuelEvent is not null)
                             {
-                                onPrivateDuelEvent(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_PrivateDuelEvent>(ptr) });
+                                OnPrivateDuelEvent(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_PrivateDuelEvent>(ptr) });
                             }
 
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_MAPCHANGE:
                         {
-                            if (onMapchange != null)
+                            if (OnMapchange is not null)
                             {
-                                onMapchange(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_MapChange>(ptr) });
+                                OnMapchange(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_MapChange>(ptr) });
                             }
 
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_MODECHANGE:
                         {
-                            if (onModechange != null)
+                            if (OnModechange is not null)
                             {
-                                onModechange(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ModeChange>(ptr) });
+                                OnModechange(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ModeChange>(ptr) });
                             }
 
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_SMODCMD:
                         {
-                            if (onSMODCommand != null)
+                            if (OnSMODCommand is not null)
                             {
-                                onSMODCommand(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_SmodCommand>(ptr) });
+                                OnSMODCommand(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_SmodCommand>(ptr) });
                             }
 
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_SMODLOGIN:
                         {
-                            if (onSMODLogin != null)
+                            if (OnSMODLogin is not null)
                             {
-                                onSMODLogin(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_SmodLogin>(ptr) });
+                                OnSMODLogin(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_SmodLogin>(ptr) });
                             }
 
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_NAMECHANGE:
                         {
-                            if(onNameChange != null)
+                            if(OnNameChange is not null)
                             {
-                                onNameChange(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_NameChange>(ptr) });
+                                OnNameChange(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_NameChange>(ptr) });
                             }
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_BAN:
                         {
-                            if (onBan != null)
+                            if (OnBan is not null)
                             {
-                                onBan(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_Ban>(ptr) });
+                                OnBan(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_Ban>(ptr) });
                             }
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_INTERMISSION:
                         {
-                            if (onIntermission != null)
+                            if (OnIntermission is not null)
                             {
-                                onIntermission(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_Intermission>(ptr) });
+                                OnIntermission(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_Intermission>(ptr) });
                             }
                             break;
                         }
                     case MBIINotificationType.MBII_RENS_OBJCOMPLETE:
                         {
-                            if (onObjComplete != null)
+                            if (OnObjComplete is not null)
                             {
-                                onObjComplete(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ObjectiveComplete>(ptr) });
+                                OnObjComplete(this, new MBIINotificationEvent() { Notification = Marshal.PtrToStructure<MBIINotification_ObjectiveComplete>(ptr) });
                             }
                             break;
                         }
@@ -408,13 +409,13 @@ namespace MB2EventReceiver
 
         public async void EndListen()
         {
-            TokenSource.Cancel();
-            if (listenTask != null)
+            _tokenSource.Cancel();
+            if (_listenTask is not null)
             {
-                await listenTask;
+                await _listenTask;
             }
-            udpSocket.Dispose();
-            udpProcessingChannel.Writer.TryComplete();
+            _udpSocket.Dispose();
+            _udpProcessingChannel.Writer.TryComplete();
         }
     }
 }
